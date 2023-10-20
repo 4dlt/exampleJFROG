@@ -1,12 +1,12 @@
-name: Build and Tag Docker Image
+name: Pull and Push Docker Image to JFrog
 
 on:
   push:
     branches:
       - main
-      
+
 jobs:
-  build-and-tag:
+  pull-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -18,21 +18,26 @@ jobs:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Build Tag and push Docker Image
+      - name: Pull Docker Image from Public Registry and Push to JFrog
         env:
-          IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-example-image:${{ github.run_number }}
+          PUBLIC_IMAGE_NAME: python:3.4-alpine
+          JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}
         run: |
-          jf docker build -t $IMAGE_NAME .
-          jf docker push $IMAGE_NAME
-          
+          # Pull the image from the public registry (Docker Hub)
+          docker pull $PUBLIC_IMAGE_NAME
+          # Tag the image for JFrog Artifactory
+          docker tag $PUBLIC_IMAGE_NAME $JFROG_IMAGE_NAME
+          # Push the image to JFrog Artifactory using JFrog CLI
+          jf docker push $JFROG_IMAGE_NAME
+
       - name: Publish Build info With JFrog CLI
         env:
           # Generated and maintained by GitHub
-          JFROG_CLI_BUILD_NAME: jfrog-docker-build-example
+          JFROG_CLI_BUILD_NAME: jfrog-docker-pull-push-example
           # JFrog organization secret
           JFROG_CLI_BUILD_NUMBER : ${{ github.run_number }}
         run: |
-          # Export the build name and build nuber
+          # Export the build name and build number
           # Collect environment variables for the build
           jf rt build-collect-env
           # Collect VCS details from git and add them to the build
