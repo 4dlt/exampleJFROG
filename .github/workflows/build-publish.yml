@@ -1,26 +1,23 @@
 name: Pull, Scan and Push Docker Image to JFrog
 
 on:
-  push:
-    branches:
-      - main
+  issues:
+    types: [opened]
 
 jobs:
-  pull-and-push:
+  scan-on-issue:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v3
-        env:
-          JF_URL: ${{ secrets.JF_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      - name: Set up Docker Image Name
+        id: get-image-name
+        run: echo "::set-output name=IMAGE_NAME::${{ github.event.issue.title }}"
 
       - name: Pull Docker Image from Public Registry
         env:
-          PUBLIC_IMAGE_NAME: python:3.4-alpine
+          PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
         run: |
           # Pull the image from the public registry (Docker Hub)
           docker pull $PUBLIC_IMAGE_NAME
@@ -28,7 +25,7 @@ jobs:
       - name: Scan Image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'python:3.4-alpine'
+          image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           exit-code: '1' # Exit with '1' if vulnerabilities are detected
           severity: 'CRITICAL' # Only fail the job for CRITICAL vulnerabilities
 
