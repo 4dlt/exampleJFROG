@@ -1,4 +1,4 @@
-name: Pull and Push Docker Image to JFrog
+name: Pull, Scan and Push Docker Image to JFrog
 
 on:
   push:
@@ -18,13 +18,25 @@ jobs:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Pull Docker Image from Public Registry and Push to JFrog
+      - name: Pull Docker Image from Public Registry
+        env:
+          PUBLIC_IMAGE_NAME: python:3.4-alpine
+        run: |
+          # Pull the image from the public registry (Docker Hub)
+          docker pull $PUBLIC_IMAGE_NAME
+
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'python:3.4-alpine'
+          exit-code: '1' # Exit with '1' if vulnerabilities are detected
+          severity: 'CRITICAL' # Only fail the job for CRITICAL vulnerabilities
+
+      - name: Tag and Push Docker Image to JFrog
         env:
           PUBLIC_IMAGE_NAME: python:3.4-alpine
           JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}
         run: |
-          # Pull the image from the public registry (Docker Hub)
-          docker pull $PUBLIC_IMAGE_NAME
           # Tag the image for JFrog Artifactory
           docker tag $PUBLIC_IMAGE_NAME $JFROG_IMAGE_NAME
           # Push the image to JFrog Artifactory using JFrog CLI
