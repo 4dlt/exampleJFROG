@@ -23,20 +23,20 @@ jobs:
           docker pull $PUBLIC_IMAGE_NAME
 
       - name: Scan Image with Trivy
+        id: trivy-scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
-          exit-code: '1' # Exit with '1' if vulnerabilities are detected
-          severity: 'CRITICAL' # Only fail the job for CRITICAL vulnerabilities
+          exit-code: '1'
+          severity: 'CRITICAL'
 
       - name: Tag and Push Docker Image to JFrog
+        if: steps.trivy-scan.outcome == 'success'
         env:
-          PUBLIC_IMAGE_NAME: python:3.4-alpine
+          PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}
         run: |
-          # Tag the image for JFrog Artifactory
           docker tag $PUBLIC_IMAGE_NAME $JFROG_IMAGE_NAME
-          # Push the image to JFrog Artifactory using JFrog CLI
           jf docker push $JFROG_IMAGE_NAME
 
       - name: Publish Build info With JFrog CLI
@@ -53,3 +53,17 @@ jobs:
           jf rt build-add-git
           # Publish build info
           jf rt build-publish
+          
+      - name: Install GitHub CLI
+        if: steps.trivy-scan.outcome == 'success'
+        run: |
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
+          sudo apt-add-repository https://cli.github.com/packages
+          sudo apt update
+          sudo apt install gh
+
+      - name: Add comment to issue using GitHub CLI
+        if: steps.trivy-scan.outcome == 'success'
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
+          gh issue comment ${{ github.event.issue.number }} --body "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}"
