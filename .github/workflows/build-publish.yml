@@ -29,6 +29,11 @@ jobs:
           image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           exit-code: '1'
           severity: 'CRITICAL'
+      - uses: trstringer/manual-approval@v1
+        with:
+          approvers: 4dlt
+          secret: ${{ github.TOKEN }}
+          minimum-approvals: 1
 
       - name: Tag and Push Docker Image to JFrog
         if: steps.trivy-scan.outcome == 'success'
