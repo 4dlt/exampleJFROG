@@ -31,11 +31,18 @@ jobs:
           image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           exit-code: '1'
           severity: 'CRITICAL'
-      - uses: trstringer/manual-approval@v1
-        with:
-          approvers: 4dlt
-          secret: ${{ github.TOKEN }}
-          minimum-approvals: 1
+     # - uses: trstringer/manual-approval@v1
+     #   with:
+     #     approvers: 4dlt
+     #     secret: ${{ github.TOKEN }}
+     #     minimum-approvals: 1
+
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v3
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+  
 
       - name: Tag and Push Docker Image to JFrog
         if: steps.trivy-scan.outcome == 'success'
@@ -60,8 +67,6 @@ jobs:
           jf rt build-add-git
           # Publish build info
           jf rt build-publish
-
-      # ... [previous steps in your workflow]
 
       - name: Fetch Image Digest
         id: fetch-digest
