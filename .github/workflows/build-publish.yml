@@ -50,7 +50,7 @@ jobs:
         if: steps.trivy-scan.outcome == 'success'
         env:
           PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
-          JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}
+          JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/${{ steps.get-image-name.outputs.IMAGE_NAME }}:${{ github.run_number }}
         run: |
           docker tag $PUBLIC_IMAGE_NAME $JFROG_IMAGE_NAME
           jf docker push $JFROG_IMAGE_NAME
