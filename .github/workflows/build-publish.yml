@@ -60,7 +60,29 @@ jobs:
           jf rt build-add-git
           # Publish build info
           jf rt build-publish
-          
+
+      # ... [previous steps in your workflow]
+
+      - name: Fetch Image Digest
+        id: fetch-digest
+        env:
+          JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}
+        run: |
+          DIGEST=$(docker inspect --format='{{.RepoDigests}}' $JFROG_IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
+          echo "::set-output name=image_digest::$DIGEST"
+
+      - name: Append Image Info to Text File
+        run: |
+          echo "${{ env.JFROG_IMAGE_NAME }}@${{ steps.fetch-digest.outputs.image_digest }}" >> uploaded_images.txt
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add uploaded_images.txt
+          git commit -m "Append new JFrog Docker image info to uploaded_images.txt"
+          git push
+
       - name: Install GitHub CLI
         if: steps.trivy-scan.outcome == 'success'
         run: |
