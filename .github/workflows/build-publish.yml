@@ -3,6 +3,7 @@ name: Pull, Scan and Push Docker Image to JFrog
 on:
   issues:
     types: [opened]
+  workflow_dispatch:
 
 jobs:
   scan-on-issue:
