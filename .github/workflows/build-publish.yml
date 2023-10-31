@@ -59,14 +59,14 @@ jobs:
         env:
           JF_URL: ${{ secrets.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-  
 
       - name: Tag and Push Docker Image to JFrog
         if: steps.trivy-scan.outcome == 'success'
         env:
           PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
-          JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/${{ steps.get-image-name.outputs.IMAGE_NAME }}:${{ github.run_number }}
         run: |
+          TRANSFORMED_IMAGE_NAME=$(echo "${{ steps.get-image-name.outputs.IMAGE_NAME }}" | sed 's/:/-/')
+          JFROG_IMAGE_NAME=alvarodelatorre.jfrog.io/docker/$TRANSFORMED_IMAGE_NAME:${{ github.run_number }}
           docker tag $PUBLIC_IMAGE_NAME $JFROG_IMAGE_NAME
           jf docker push $JFROG_IMAGE_NAME
 
