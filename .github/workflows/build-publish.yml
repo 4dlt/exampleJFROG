@@ -105,16 +105,9 @@ jobs:
           git commit -m "Append new JFrog Docker image info to uploaded_images.txt"
           git push
 
-      - name: Install GitHub CLI
+      - name: Add comment to issue
         if: steps.trivy-scan.outcome == 'success'
         run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
-          sudo apt-add-repository https://cli.github.com/packages
-          sudo apt update
-          sudo apt install gh
-
-      - name: Add comment to issue using GitHub CLI
-        if: steps.trivy-scan.outcome == 'success'
-        run: |
-          echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
-          gh issue comment ${{ github.event.issue.number }} --body "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}"
+          URL="https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments"
+          PAYLOAD=$(echo '{ "body": "Image scan successful. You can pull the Docker image from: 'alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}'" }' | jq -c .)
+          curl -sSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -X POST -d "$PAYLOAD" $URL }} --body "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}"
