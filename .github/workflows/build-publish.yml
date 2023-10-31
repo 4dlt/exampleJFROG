@@ -20,9 +20,23 @@ jobs:
         run: echo "::set-output name=IMAGE_NAME::${{ github.event.issue.title }}"
 
       - name: Pull Docker Image from Public Registry
+        id: pull-dct
         env:
           PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
         run: |
+          #Enable docker content trust
+          export DOCKER_CONTENT_TRUST=1
+          # Pull the image from the public registry (Docker Hub)
+          docker pull $PUBLIC_IMAGE_NAME
+        continue-on-error: true
+        
+      - name: Pull without signature verification
+        if: steps.trivy-scan.outcome == 'failure'
+        env:
+          PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
+        run: |
+          #Disable docker content trust
+          export DOCKER_CONTENT_TRUST=0
           # Pull the image from the public registry (Docker Hub)
           docker pull $PUBLIC_IMAGE_NAME
 
@@ -33,6 +47,7 @@ jobs:
           image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           exit-code: '1'
           severity: 'CRITICAL'
+        
      # - uses: trstringer/manual-approval@v1
      #   with:
      #     approvers: 4dlt
