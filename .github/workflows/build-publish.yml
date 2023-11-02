@@ -94,5 +94,6 @@ jobs:
         if: steps.trivy-scan.outcome == 'success'
         run: |
           URL="https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments"
-          PAYLOAD=$(echo '{ "body": "Image scan successful. You can pull the Docker image from: 'alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}'" }' | jq -c .)
-          curl -sSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -X POST -d "$PAYLOAD" $URL }} --body "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}"
+          PAYLOAD=$(echo '{ "body": "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}" }' | jq -c .)
+          curl -sSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$URL"
+      
