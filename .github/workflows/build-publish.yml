@@ -68,22 +68,7 @@ jobs:
           TRANSFORMED_IMAGE_NAME=$(echo "${{ steps.get-image-name.outputs.IMAGE_NAME }}" | sed 's/:/-/')
           JFROG_IMAGE_NAME=alvarodelatorre.jfrog.io/docker/$TRANSFORMED_IMAGE_NAME:${{ github.run_number }}
           docker tag $PUBLIC_IMAGE_NAME $JFROG_IMAGE_NAME
-          jf docker push $JFROG_IMAGE_NAME
-
-      - name: Publish Build info With JFrog CLI
-        env:
-          # Generated and maintained by GitHub
-          JFROG_CLI_BUILD_NAME: jfrog-docker-pull-push-example
-          # JFrog organization secret
-          JFROG_CLI_BUILD_NUMBER : ${{ github.run_number }}
-        run: |
-          # Export the build name and build number
-          # Collect environment variables for the build
-          jf rt build-collect-env
-          # Collect VCS details from git and add them to the build
-          jf rt build-add-git
-          # Publish build info
-          jf rt build-publish
+          jf docker push $JFROG_IMAGE_NAME --build-name=$PUBLIC_IMAGE_NAME --build-number=${{ github.run_number }}
 
       - name: Fetch Image Digest
         id: fetch-digest
