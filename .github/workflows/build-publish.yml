@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 env:
   IMAGE_NAME: ${{ github.event.issue.title }}
+  JFROG_IMAGE_NAME: $( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
 
 jobs:
   scan-on-issue:
@@ -34,6 +35,7 @@ jobs:
           export DOCKER_CONTENT_TRUST=0
           # Pull the image from the public registry (Docker Hub)
           docker pull $IMAGE_NAME
+          echo $JFROG_IMAGE_NAME
 
       - name: Scan Image with Trivy
         id: trivy-scan
@@ -79,9 +81,8 @@ jobs:
 
       - name: Fetch Image Digest
         id: fetch-digest
-        env:
-          JFROG_IMAGE_NAME: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}
         run: |
+          JFROG_IMAGE_NAME= $( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
           DIGEST=$(docker inspect --format='{{.RepoDigests}}' $JFROG_IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
           echo "::set-output name=image_digest::$DIGEST"
 
