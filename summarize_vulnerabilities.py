@@ -1,5 +1,6 @@
 
 import json
+import sys
 
 def summarize_vulnerabilities(file_path):
     with open(file_path, 'r') as file:
