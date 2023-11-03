@@ -101,7 +101,7 @@ jobs:
 
       - uses: actions/github-script@v6
         env:
-          IMAGE_URL: ${{ secrets.JF_URL }}/docker/$IMAGE_NAME
+          IMAGE_URL: ${{ secrets.JF_URL }}/docker/${{ env.IMAGE_NAME }}
         with:
           script: |
             const imageUrl = process.env.IMAGE_URL
