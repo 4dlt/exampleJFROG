@@ -50,6 +50,9 @@ jobs:
           exit-code: '1' # Set exit code to 1 if vulnerabilities are found
           severity: 'CRITICAL' # Only fail for CRITICAL vulnerabilities
           
+      - name: test
+        run: ll && cat trivy-results.json 
+          
       - name: Summarize Vulnerabilities
         if: steps.trivy-scan.outcome == 'success'
         run: |
@@ -57,7 +60,8 @@ jobs:
           echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-        
+          
+
       - uses: trstringer/manual-approval@v1
         with:
           approvers: 4dlt
