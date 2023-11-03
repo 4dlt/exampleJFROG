@@ -39,7 +39,7 @@ jobs:
         id: trivy-scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
+          image-ref: $IMAGE_NAME
           format: 'json' # Output format for the scan results
           output: 'trivy-results.json' # Name of the output file
       
