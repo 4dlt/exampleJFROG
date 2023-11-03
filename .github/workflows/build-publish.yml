@@ -11,6 +11,7 @@ jobs:
     permissions:
       issues: write
       contents: write
+      repository-projects: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -112,10 +113,23 @@ jobs:
           git commit -m "Append new JFrog Docker image info to uploaded_images.txt"
           git push
 
+
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.issue.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '👋 Thanks for reporting!'
+            })
+      
+
       - name: Add comment to issue
         if: steps.trivy-scan.outcome == 'success'
         run: |
           URL="https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments"
           PAYLOAD=$(echo '{ "body": "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}" }' | jq -c .)
           curl -sSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$URL"
-      
+
+
