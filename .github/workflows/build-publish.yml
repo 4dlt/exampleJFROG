@@ -31,7 +31,7 @@ jobs:
         continue-on-error: true
         
       - name: Pull without signature verification
-        if: steps.trivy-scan.outcome == 'failure'
+        if: steps.pull-dct.outcome == 'failure'
         env:
           PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
         run: |
@@ -58,10 +58,15 @@ jobs:
         if: steps.trivy-scan.outcome == 'success'
         run: |
           python summarize_vulnerabilities.py trivy-results.json > vulnerability_summary.txt
+          if [ "${{ steps.pull-dct.outcome }}" == "success" ]; then
+            echo "The image is signed." >> vulnerability_summary.txt
+          else
+            echo "The image is not signed." >> vulnerability_summary.txt
+          fi
           echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          
+
 
       - uses: trstringer/manual-approval@v1
         with:
