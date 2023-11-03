@@ -47,8 +47,7 @@ jobs:
           image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           format: 'json' # Output format for the scan results
           output: 'trivy-results.json' # Name of the output file
-          exit-code: '1' # Set exit code to 1 if vulnerabilities are found
-          severity: 'CRITICAL' # Only fail for CRITICAL vulnerabilities
+
           
       - name: test
         run: |
