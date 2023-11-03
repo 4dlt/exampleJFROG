@@ -34,11 +34,6 @@ jobs:
           export DOCKER_CONTENT_TRUST=0
           # Pull the image from the public registry (Docker Hub)
           docker pull $IMAGE_NAME
-          
-      - name: test
-        run: |
-          ls
-          cat $IMAGE_NAME
 
       - name: Scan Image with Trivy
         id: trivy-scan
@@ -47,11 +42,6 @@ jobs:
           image-ref: ${{ env.IMAGE_NAME }}
           format: 'json' # Output format for the scan results
           output: 'trivy-results.json' # Name of the output file
-      
-      - name: test
-        run: |
-          ls
-          cat trivy-results.json 
           
       - name: Summarize Vulnerabilities
         if: steps.trivy-scan.outcome == 'success'
@@ -118,7 +108,7 @@ jobs:
               issue_number: ${{ github.event.issue.number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋 Thanks for reporting!'
+              body: '👋 Thanks for submitting the request! The image has been approved and uploaded to the company registry. You can find it in $IMAGE_NAME'
             })
       
 
