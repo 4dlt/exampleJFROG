@@ -100,13 +100,15 @@ jobs:
 
 
       - uses: actions/github-script@v6
+        env:
+          IMAGE_URL: ${{ secrets.JF_URL }}/docker/$IMAGE_NAME
         with:
           script: |
             github.rest.issues.createComment({
               issue_number: ${{ github.event.issue.number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋 Thanks for submitting the request! The image has been approved and uploaded to the company registry. You can find it in $IMAGE_NAME'
+              body: '👋 Thanks for submitting the request! The image has been approved and uploaded to the company registry. You can find it in ${process.env.IMAGE_URL}'
             })
       
 
