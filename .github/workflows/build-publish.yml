@@ -4,6 +4,8 @@ on:
   issues:
     types: [opened]
   workflow_dispatch:
+env:
+  IMAGE_NAME: ${{ github.event.issue.title }}
 
 jobs:
   scan-on-issue:
@@ -16,30 +18,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Docker Image Name
-        id: get-image-name
-        run: echo "::set-output name=IMAGE_NAME::${{ github.event.issue.title }}"
-
       - name: Pull Docker Image from Public Registry
         id: pull-dct
-        env:
-          PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
         run: |
           #Enable docker content trust
           export DOCKER_CONTENT_TRUST=1
           # Pull the image from the public registry (Docker Hub)
-          docker pull $PUBLIC_IMAGE_NAME
+          docker pull $IMAGE_NAME
         continue-on-error: true
         
       - name: Pull without signature verification
         if: steps.pull-dct.outcome == 'failure'
-        env:
-          PUBLIC_IMAGE_NAME: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
         run: |
           #Disable docker content trust
           export DOCKER_CONTENT_TRUST=0
           # Pull the image from the public registry (Docker Hub)
-          docker pull $PUBLIC_IMAGE_NAME
+          docker pull $IMAGE_NAME
 
       - name: Scan Image with Trivy
         id: trivy-scan
@@ -48,8 +42,7 @@ jobs:
           image-ref: ${{ steps.get-image-name.outputs.IMAGE_NAME }}
           format: 'json' # Output format for the scan results
           output: 'trivy-results.json' # Name of the output file
-
-          
+      
       - name: test
         run: |
           ls
