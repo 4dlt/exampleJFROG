@@ -8,3 +8,4 @@
 @
 @
 alvarodelatorre.jfrog.io/docker/python:3.4-alpine@sha256:f031db30449b815a6ef2abcc8a9241a68f55c63035170b85dca3b1db2891e6fa python
+alvarodelatorre.jfrog.io/docker/python:3.4-alpine@sha256:f031db30449b815a6ef2abcc8a9241a68f55c63035170b85dca3b1db2891e6fa python
