@@ -51,7 +51,9 @@ jobs:
           severity: 'CRITICAL' # Only fail for CRITICAL vulnerabilities
           
       - name: test
-        run: ll && cat trivy-results.json 
+        run: |
+          ls
+          cat trivy-results.json 
           
       - name: Summarize Vulnerabilities
         if: steps.trivy-scan.outcome == 'success'
