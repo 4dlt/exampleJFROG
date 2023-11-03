@@ -57,7 +57,6 @@ jobs:
           echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
         
       - uses: trstringer/manual-approval@v1
         with:
