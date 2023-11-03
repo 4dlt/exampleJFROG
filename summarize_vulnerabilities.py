@@ -36,5 +36,10 @@ def summarize_vulnerabilities(file_path):
         print(f'{severity}: {count}')
 
 # Replace 'path_to_results.json' with the actual path to your Trivy scan JSON file
-summarize_vulnerabilities('path_to_results.json')
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: python summarize_vulnerabilities.py <path_to_trivy_results.json>")
+        sys.exit(1)
 
+    results_file_path = sys.argv[1]
+    summarize_vulnerabilities(results_file_path)
