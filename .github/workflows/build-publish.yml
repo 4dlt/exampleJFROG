@@ -57,7 +57,8 @@ jobs:
       - name: Summarize Vulnerabilities
         if: steps.trivy-scan.outcome == 'success'
         run: |
-          python summarize_vulnerabilities.py trivy-results.json > vulnerability_summary.txt
+          echo "Image name: ${{ steps.get-image-name.outputs.IMAGE_NAME }}" > vulnerability_summary.txt
+          python summarize_vulnerabilities.py trivy-results.json >> vulnerability_summary.txt
           if [ "${{ steps.pull-dct.outcome }}" == "success" ]; then
             echo "The image is signed." >> vulnerability_summary.txt
           else
