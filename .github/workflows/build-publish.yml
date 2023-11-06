@@ -22,8 +22,6 @@ jobs:
       VULNERABILITY_SUMARY: ${{ steps.summarize-vulnerabilities.outputs.VULNERABILITY_SUMMARY }}
       IMAGE_SIGNATURE_STATUS: ${{ steps.summarize-vulnerabilities.outputs.IMAGE_SIGNATURE_STATUS }}
       APPROVED_OR_DENIED: ${{ steps.set-variables.outputs.APPROVED_OR_DENIED }}
-      DATE_AND_TIME_OF_APPROVAL: ${{ steps.set-variables.outputs.DATE_AND_TIME_OF_APPROVAL }} 
-      USER_WHO_APPROVED_OR_DENIED: ${{ steps.set-variables.outputs.USER_WHO_APPROVED_OR_DENIED }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -80,7 +78,8 @@ jobs:
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-
+      - name: test event info
+        run: echo "$GITHUB_EVENT_PATH"
 
       # - uses: trstringer/manual-approval@v1
       #   id: manual-approval
@@ -93,13 +92,7 @@ jobs:
       
 
       
-      - name: Set variables
-        id: set-variables
-        if: steps.manual-approval.outputs.approved == 'true'
-        run: |
-          export APPROVED_OR_DENIED="Approved"
-          export DATE_AND_TIME_OF_APPROVAL=$(date)
-          export USER_WHO_APPROVED_OR_DENIED=$(echo ${{ github.actor }})
+
     
 
 # Job using the 'Prod repo' environment to push the approved images to the company registry
@@ -109,6 +102,9 @@ jobs:
     needs: scan-on-issue
     runs-on: ubuntu-latest
     environment: Prod repo
+    outputs:
+      DATE_AND_TIME_OF_APPROVAL: ${{ steps.set-variables.outputs.DATE_AND_TIME_OF_APPROVAL }} 
+      USER_WHO_APPROVED_OR_DENIED: ${{ steps.set-variables.outputs.USER_WHO_APPROVED_OR_DENIED }}
     permissions:
       issues: write
       contents: write
@@ -117,8 +113,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       
-      - name: test upload
-        run: echo "test upload"
+      - name: test event info
+        run: echo "$GITHUB_EVENT_PATH"
+
+      - name: Set variables
+        id: set-variables
+        run: |
+          export APPROVED_OR_DENIED="Approved"
+          export DATE_AND_TIME_OF_APPROVAL=$(date)
+          export USER_WHO_APPROVED_OR_DENIED=$(echo ${{ github.actor }})
+        
+      # Save date of approval as an output
   
 
 
@@ -179,6 +184,7 @@ jobs:
 # - Date and time of the approval
 # - User who approved or denied the image
 # All the information will be retrieved from the results of the push-to-jfrog job
+
   logging:
     needs: push-to-jfrog
     runs-on: ubuntu-latest
@@ -191,6 +197,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: test event info
+        run: echo "$GITHUB_EVENT_PATH"
+
       - name: Create log file if it doesn't exist
         run: |
           if [ ! -f approved_and_denied_images.csv ]; then
@@ -200,8 +209,16 @@ jobs:
 
         # Append info into log file getting the info from the outputs of the scan-on-issue job
       - name: Append info to log file
+        env:
+          IMAGE_DIGEST: ${{ needs.scan-on-issue.outputs.IMAGE_DIGEST }}
+          VULNERABILITY_SUMMARY: ${{ needs.scan-on-issue.outputs.VULNERABILITY_SUMMARY }}
+          IMAGE_SIGNATURE_STATUS: ${{ needs.scan-on-issue.outputs.IMAGE_SIGNATURE_STATUS }}
+          APPROVED_OR_DENIED: ${{ needs.scan-on-issue.outputs.APPROVED_OR_DENIED }}
+          DATE_AND_TIME_OF_APPROVAL: ${{ needs.scan-on-issue.outputs.DATE_AND_TIME_OF_APPROVAL }}
+
         run: |
-          echo "${{ env.IMAGE_NAME }},${{ steps.get-image-digest.outputs.IMAGE_DIGEST }},${{ steps.summarize-vulnerabilities.outputs.VULNERABILITY_SUMMARY }},${{ steps.summarize-vulnerabilities.outputs.IMAGE_SIGNATURE_STATUS }},${{ steps.set-variables.outputs.APPROVED_OR_DENIED }},${{ steps.set-variables.outputs.DATE_AND_TIME_OF_APPROVAL }},${{ steps.set-variables.outputs.USER_WHO_APPROVED_OR_DENIED }}" >> approved_and_denied_images.csv
+         
+
 
       - name: Commit and Push Changes
         run: |
