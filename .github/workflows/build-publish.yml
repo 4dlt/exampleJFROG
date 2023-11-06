@@ -7,8 +7,7 @@ on:
 env:
 #   IMAGE_NAME: ${{ github.event.issue.title }}
   IMAGE_NAME: python:3.4-alpine
-  JFROG_IMAGE_NAME: $( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
-  APPROVED_OR_DENIE: Approved
+  APPROVED_OR_DENIED: Approved
 jobs:
   scan-on-issue:
     runs-on: ubuntu-latest
@@ -21,7 +20,6 @@ jobs:
       IMAGE_DIGEST: ${{ steps.get-image-digest.outputs.IMAGE_DIGEST }}
       VULNERABILITY_SUMARY: ${{ steps.summarize-vulnerabilities.outputs.VULNERABILITY_SUMMARY }}
       IMAGE_SIGNATURE_STATUS: ${{ steps.summarize-vulnerabilities.outputs.IMAGE_SIGNATURE_STATUS }}
-      APPROVED_OR_DENIED: ${{ steps.set-variables.outputs.APPROVED_OR_DENIED }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -79,7 +77,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
       - name: test event info
-        run: echo "$GITHUB_EVENT_PATH"
+        run: cat "$GITHUB_EVENT_PATH"
 
       # - uses: trstringer/manual-approval@v1
       #   id: manual-approval
@@ -114,7 +112,10 @@ jobs:
         uses: actions/checkout@v2
       
       - name: test event info
-        run: echo "$GITHUB_EVENT_PATH"
+        run: cat "$GITHUB_EVENT_PATH"
+      
+      - name: Set JFROG_IMAGE_NAME
+        run: echo "JFROG_IMAGE_NAME=$(echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
 
       - name: Set variables
         id: set-variables
@@ -198,7 +199,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: test event info
-        run: echo "$GITHUB_EVENT_PATH"
+        run: cat "$GITHUB_EVENT_PATH"
 
       - name: Create log file if it doesn't exist
         run: |
@@ -217,6 +218,7 @@ jobs:
           DATE_AND_TIME_OF_APPROVAL: ${{ needs.scan-on-issue.outputs.DATE_AND_TIME_OF_APPROVAL }}
 
         run: |
+          echo "${{ env.IMAGE_NAME }},${{ env.IMAGE_DIGEST }},${{ env.VULNERABILITY_SUMMARY }},${{ env.IMAGE_SIGNATURE_STATUS }},${{ env.APPROVED_OR_DENIED }},${{ env.DATE_AND_TIME_OF_APPROVAL }},${{ needs.push-to-jfrog.outputs.USER_WHO_APPROVED_OR_DENIED }}" >> approved_and_denied_images.csv
          
 
 
