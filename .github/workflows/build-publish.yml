@@ -127,8 +127,6 @@ jobs:
       # Save date of approval as an output
   
 
-
-
       # - name: Setup JFrog CLI
       #   uses: jfrog/setup-jfrog-cli@v3
       #   env:
