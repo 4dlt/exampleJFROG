@@ -5,7 +5,8 @@ on:
     types: [opened]
   workflow_dispatch:
 env:
-  IMAGE_NAME: ${{ github.event.issue.title }}
+#   IMAGE_NAME: ${{ github.event.issue.title }}
+  IMAGE_NAME: python:3.4-alpine
   JFROG_IMAGE_NAME: $( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
 
 jobs:
@@ -58,7 +59,7 @@ jobs:
           echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          
+
 
 
       # - uses: trstringer/manual-approval@v1
