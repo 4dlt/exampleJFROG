@@ -58,6 +58,7 @@ jobs:
           echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+          
 
 
       # - uses: trstringer/manual-approval@v1
@@ -113,6 +114,7 @@ jobs:
             })
 
  # Logging job dedicated to log all the info about the appoved and denied docker images
+ # The job must wait for the scan-on-issue job to finish before it can run
   logging:
     runs-on: ubuntu-latest
     permissions:
