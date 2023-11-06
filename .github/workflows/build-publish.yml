@@ -116,7 +116,17 @@ jobs:
 
  # Logging job dedicated to log all the info about the appoved and denied docker images
  # The job must wait for the scan-on-issue job to finish before it can run
+ # Saves a list of all the approved images in a file and contains the following info:
+# - Image name
+# - Image digest
+# - Image scan results
+# - Image signature status
+# - Approved or denied
+# - Date and time of the approval
+# - User who approved or denied the image
+# All the information will be retrieved from the results of the scan-on-issue job
   logging:
+    needs: scan-on-issue
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -126,24 +136,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-# Saves a list of all the approved images in a file and contains the following info:
-# - Image name
-# - Image digest
-# - Image scan results
-# - Image signature status
-# - Approved or denied
-# - Date and time of the approval
-      - name: Save approved images
-        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+      - name: Create log file
         run: |
-          echo "Image name: ${{ github.event.workflow_run.head_commit.message }}" > approved_images.txt
-          echo "Image digest: ${{ github.event.workflow_run.outputs.image_digest }}" >> approved_images.txt
-          echo "Image scan results: ${{ github.event.workflow_run.outputs.vulnerability_summary }}" >> approved_images.txt
-          echo "Image signature status: ${{ github.event.workflow_run.outputs.pull-dct.outcome }}" >> approved_images.txt
-          echo "Approved: Yes" >> approved_images.txt
-          echo "Date and time of the approval: ${{ github.event.workflow_run.updated_at }}" >> approved_images.txt
-          echo "APPROVED_IMAGES<<EOF" >> $GITHUB_ENV
-          cat approved_images.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "IMAGE_NAME,IMAGE_DIGEST,IMAGE_SCAN_RESULTS,IMAGE_SIGNATURE_STATUS,APPROVED_OR_DENIED,DATE_AND_TIME_OF_APPROVAL,USER_WHO_APPROVED_OR_DENIED" > approved_and_denied_images.csv
 
+      - name: Append info to log file
+        run: |
+          echo "${{ env.JFROG_IMAGE_NAME }},$DIGEST,$VULNERABILITY_SUMMARY,$IMAGE_SIGNATURE_STATUS,$APPROVED_OR_DENIED,$DATE_AND_TIME_OF_APPROVAL,$USER_WHO_APPROVED_OR_DENIED" >> approved_and_denied_images.csv
 
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "
