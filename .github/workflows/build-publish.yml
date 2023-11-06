@@ -60,43 +60,43 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
 
-      - uses: trstringer/manual-approval@v1
-        with:
-          approvers: 4dlt
-          secret: ${{ github.TOKEN }}
-          minimum-approvals: 1
-          issue-body: ${{ env.VULNERABILITY_SUMMARY }}
+      # - uses: trstringer/manual-approval@v1
+      #   with:
+      #     approvers: 4dlt
+      #     secret: ${{ github.TOKEN }}
+      #     minimum-approvals: 1
+      #     issue-body: ${{ env.VULNERABILITY_SUMMARY }}
 
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v3
-        env:
-          JF_URL: ${{ secrets.JF_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      # - name: Setup JFrog CLI
+      #   uses: jfrog/setup-jfrog-cli@v3
+      #   env:
+      #     JF_URL: ${{ secrets.JF_URL }}
+      #     JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Tag and Push Docker Image to JFrog
-        run: |
-          JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
-          docker tag $IMAGE_NAME $JFROG_IMAGE_NAME
-          jf docker push $JFROG_IMAGE_NAME --build-name=$IMAGE_NAME --build-number=${{ github.run_number }}
+      # - name: Tag and Push Docker Image to JFrog
+      #   run: |
+      #     JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
+      #     docker tag $IMAGE_NAME $JFROG_IMAGE_NAME
+      #     jf docker push $JFROG_IMAGE_NAME --build-name=$IMAGE_NAME --build-number=${{ github.run_number }}
 
-      - name: Fetch Image Digest
-        id: fetch-digest
-        run: |
-          JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
-          DIGEST=$(docker inspect --format='{{.RepoDigests}}' $JFROG_IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
-          echo "::set-output name=image_digest::$DIGEST"
+      # - name: Fetch Image Digest
+      #   id: fetch-digest
+      #   run: |
+      #     JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
+      #     DIGEST=$(docker inspect --format='{{.RepoDigests}}' $JFROG_IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
+      #     echo "::set-output name=image_digest::$DIGEST"
 
-      - name: Append Image Info to Text File
-        run: |
-          echo "${{ env.JFROG_IMAGE_NAME }}@${{ steps.fetch-digest.outputs.image_digest }}" >> uploaded_images.txt
+      # - name: Append Image Info to Text File
+      #   run: |
+      #     echo "${{ env.JFROG_IMAGE_NAME }}@${{ steps.fetch-digest.outputs.image_digest }}" >> uploaded_images.txt
 
-      - name: Commit and Push Changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add uploaded_images.txt
-          git commit -m "Append new JFrog Docker image info to uploaded_images.txt"
-          git push
+      # - name: Commit and Push Changes
+      #   run: |
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git add uploaded_images.txt
+      #     git commit -m "Append new JFrog Docker image info to uploaded_images.txt"
+      #     git push
 
 
       - uses: actions/github-script@v6
@@ -111,13 +111,36 @@ jobs:
               repo: context.repo.repo,
               body: '👋 Thanks for submitting the request! The image has been approved and uploaded to the company registry. You can find it in ' + imageUrl
             })
-      
 
-      - name: Add comment to issue
-        if: steps.trivy-scan.outcome == 'success'
+ # Logging job dedicated to log all the info about the appoved and denied docker images
+  logging:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      repository-projects: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+# Saves a list of all the approved images in a file and contains the following info:
+# - Image name
+# - Image digest
+# - Image scan results
+# - Image signature status
+# - Approved or denied
+# - Date and time of the approval
+      - name: Save approved images
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
         run: |
-          URL="https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments"
-          PAYLOAD=$(echo '{ "body": "Image scan successful. You can pull the Docker image from: alvarodelatorre.jfrog.io/docker/jfrog-docker-python:${{ github.run_number }}" }' | jq -c .)
-          curl -sSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$URL"
+          echo "Image name: ${{ github.event.workflow_run.head_commit.message }}" > approved_images.txt
+          echo "Image digest: ${{ github.event.workflow_run.outputs.image_digest }}" >> approved_images.txt
+          echo "Image scan results: ${{ github.event.workflow_run.outputs.vulnerability_summary }}" >> approved_images.txt
+          echo "Image signature status: ${{ github.event.workflow_run.outputs.pull-dct.outcome }}" >> approved_images.txt
+          echo "Approved: Yes" >> approved_images.txt
+          echo "Date and time of the approval: ${{ github.event.workflow_run.updated_at }}" >> approved_images.txt
+          echo "APPROVED_IMAGES<<EOF" >> $GITHUB_ENV
+          cat approved_images.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
 
