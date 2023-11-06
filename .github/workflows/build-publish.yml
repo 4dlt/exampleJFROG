@@ -8,14 +8,22 @@ env:
 #   IMAGE_NAME: ${{ github.event.issue.title }}
   IMAGE_NAME: python:3.4-alpine
   JFROG_IMAGE_NAME: $( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
-
+  APPROVED_OR_DENIE: Approved
 jobs:
   scan-on-issue:
     runs-on: ubuntu-latest
+    environment: request
     permissions:
       issues: write
       contents: write
       repository-projects: write
+    outputs:
+      IMAGE_DIGEST: ${{ steps.get-image-digest.outputs.IMAGE_DIGEST }}
+      VULNERABILITY_SUMARY: ${{ steps.summarize-vulnerabilities.outputs.VULNERABILITY_SUMMARY }}
+      IMAGE_SIGNATURE_STATUS: ${{ steps.summarize-vulnerabilities.outputs.IMAGE_SIGNATURE_STATUS }}
+      APPROVED_OR_DENIED: ${{ steps.set-variables.outputs.APPROVED_OR_DENIED }}
+      DATE_AND_TIME_OF_APPROVAL: ${{ steps.set-variables.outputs.DATE_AND_TIME_OF_APPROVAL }} 
+      USER_WHO_APPROVED_OR_DENIED: ${{ steps.set-variables.outputs.USER_WHO_APPROVED_OR_DENIED }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -28,7 +36,7 @@ jobs:
           # Pull the image from the public registry (Docker Hub)
           docker pull $IMAGE_NAME
         continue-on-error: true
-        
+
       - name: Pull without signature verification
         if: steps.pull-dct.outcome == 'failure'
         run: |
@@ -37,24 +45,36 @@ jobs:
           # Pull the image from the public registry (Docker Hub)
           docker pull $IMAGE_NAME
           echo $JFROG_IMAGE_NAME
+      
+      - name: Get image digest
+        id: get-image-digest
+        run: |
+          IMAGE_DIGEST=$(docker inspect --format='{{.RepoDigests}}' $IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
+          echo "::set-output name=IMAGE_DIGEST::$IMAGE_DIGEST"
 
       - name: Scan Image with Trivy
         id: trivy-scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}
-          format: 'json' # Output format for the scan results
-          output: 'trivy-results.json' # Name of the output file
-          
+          format: 'json'
+          output: 'trivy-results.json' 
+
+     
       - name: Summarize Vulnerabilities
+        id: summarize-vulnerabilities
         if: steps.trivy-scan.outcome == 'success'
         run: |
           echo "Image name: ${{ steps.get-image-name.outputs.IMAGE_NAME }}" > vulnerability_summary.txt
           python summarize_vulnerabilities.py trivy-results.json >> vulnerability_summary.txt
           if [ "${{ steps.pull-dct.outcome }}" == "success" ]; then
             echo "The image is signed." >> vulnerability_summary.txt
+            # set the IMAGE_SIGNATURE_STATUS environment variable to signed
+            echo "IMAGE_SIGNATURE_STATUS=signed" >> $GITHUB_ENV
           else
             echo "The image is not signed." >> vulnerability_summary.txt
+            # set the IMAGE_SIGNATURE_STATUS environment variable to not signed
+            echo "IMAGE_SIGNATURE_STATUS=not signed" >> $GITHUB_ENV
           fi
           echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
           cat vulnerability_summary.txt >> $GITHUB_ENV
@@ -63,11 +83,45 @@ jobs:
 
 
       # - uses: trstringer/manual-approval@v1
+      #   id: manual-approval
       #   with:
       #     approvers: 4dlt
       #     secret: ${{ github.TOKEN }}
       #     minimum-approvals: 1
       #     issue-body: ${{ env.VULNERABILITY_SUMMARY }}
+      #   continue-on-error: true
+      
+
+      
+      - name: Set variables
+        id: set-variables
+        if: steps.manual-approval.outputs.approved == 'true'
+        run: |
+          export APPROVED_OR_DENIED="Approved"
+          export DATE_AND_TIME_OF_APPROVAL=$(date)
+          export USER_WHO_APPROVED_OR_DENIED=$(echo ${{ github.actor }})
+    
+
+# Job using the 'Prod repo' environment to push the approved images to the company registry
+# The job must wait for the scan-on-issue job to finish before it can run
+
+  push-to-jfrog:
+    needs: scan-on-issue
+    runs-on: ubuntu-latest
+    environment: Prod repo
+    permissions:
+      issues: write
+      contents: write
+      repository-projects: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: test upload
+        run: echo "test upload"
+  
+
+
 
       # - name: Setup JFrog CLI
       #   uses: jfrog/setup-jfrog-cli@v3
@@ -124,10 +178,11 @@ jobs:
 # - Approved or denied
 # - Date and time of the approval
 # - User who approved or denied the image
-# All the information will be retrieved from the results of the scan-on-issue job
+# All the information will be retrieved from the results of the push-to-jfrog job
   logging:
-    needs: scan-on-issue
+    needs: push-to-jfrog
     runs-on: ubuntu-latest
+    environment: request
     permissions:
       issues: write
       contents: write
@@ -136,14 +191,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Create log file
+      - name: Create log file if it doesn't exist
         run: |
-          echo "IMAGE_NAME,IMAGE_DIGEST,IMAGE_SCAN_RESULTS,IMAGE_SIGNATURE_STATUS,APPROVED_OR_DENIED,DATE_AND_TIME_OF_APPROVAL,USER_WHO_APPROVED_OR_DENIED" > approved_and_denied_images.csv
+          if [ ! -f approved_and_denied_images.csv ]; then
+            touch approved_and_denied_images.csv
+            echo "Image name,Image digest,Image scan results,Image signature status,Approved or denied,Date and time of the approval,User who approved or denied the image" >> approved_and_denied_images.csv
+          fi
 
+        # Append info into log file getting the info from the outputs of the scan-on-issue job
       - name: Append info to log file
         run: |
-          echo "${{ env.JFROG_IMAGE_NAME }},$DIGEST,$VULNERABILITY_SUMMARY,$IMAGE_SIGNATURE_STATUS,$APPROVED_OR_DENIED,$DATE_AND_TIME_OF_APPROVAL,$USER_WHO_APPROVED_OR_DENIED" >> approved_and_denied_images.csv
+          echo "${{ env.IMAGE_NAME }},${{ steps.get-image-digest.outputs.IMAGE_DIGEST }},${{ steps.summarize-vulnerabilities.outputs.VULNERABILITY_SUMMARY }},${{ steps.summarize-vulnerabilities.outputs.IMAGE_SIGNATURE_STATUS }},${{ steps.set-variables.outputs.APPROVED_OR_DENIED }},${{ steps.set-variables.outputs.DATE_AND_TIME_OF_APPROVAL }},${{ steps.set-variables.outputs.USER_WHO_APPROVED_OR_DENIED }}" >> approved_and_denied_images.csv
 
       - name: Commit and Push Changes
         run: |
-          git config --local user.email "
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add approved_and_denied_images.csv
+          git commit -m "Append new JFrog Docker image info to approved_and_denied_images.csv"
+          git push
