@@ -88,13 +88,9 @@ jobs:
       #     issue-body: ${{ env.VULNERABILITY_SUMMARY }}
       #   continue-on-error: true
       
-
-      
-
     
-
+#----------------- JFROG UPLOAD JOB -----------------------------
 # Job using the 'Prod repo' environment to push the approved images to the company registry
-# The job must wait for the scan-on-issue job to finish before it can run
 
   push-to-jfrog:
     needs: scan-on-issue
@@ -117,14 +113,8 @@ jobs:
       - name: Set JFROG_IMAGE_NAME
         run: echo "JFROG_IMAGE_NAME=$(echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
 
-      - name: Set variables
-        id: set-variables
-        run: |
-          export APPROVED_OR_DENIED="Approved"
-          export DATE_AND_TIME_OF_APPROVAL=$(date)
-          export USER_WHO_APPROVED_OR_DENIED=$(echo ${{ github.actor }})
-        
-      # Save date of approval as an output
+              
+#-------------- JFROG UPLOAD IMAGE ------------------
   
 
       # - name: Setup JFrog CLI
@@ -139,24 +129,6 @@ jobs:
       #     docker tag $IMAGE_NAME $JFROG_IMAGE_NAME
       #     jf docker push $JFROG_IMAGE_NAME --build-name=$IMAGE_NAME --build-number=${{ github.run_number }}
 
-      # - name: Fetch Image Digest
-      #   id: fetch-digest
-      #   run: |
-      #     JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
-      #     DIGEST=$(docker inspect --format='{{.RepoDigests}}' $JFROG_IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
-      #     echo "::set-output name=image_digest::$DIGEST"
-
-      # - name: Append Image Info to Text File
-      #   run: |
-      #     echo "${{ env.JFROG_IMAGE_NAME }}@${{ steps.fetch-digest.outputs.image_digest }}" >> uploaded_images.txt
-
-      # - name: Commit and Push Changes
-      #   run: |
-      #     git config --local user.email "action@github.com"
-      #     git config --local user.name "GitHub Action"
-      #     git add uploaded_images.txt
-      #     git commit -m "Append new JFrog Docker image info to uploaded_images.txt"
-      #     git push
 
 
       # - uses: actions/github-script@v6
@@ -218,8 +190,6 @@ jobs:
         run: |
           echo "${{ env.IMAGE_NAME }},${{ env.IMAGE_DIGEST }},${{ env.VULNERABILITY_SUMMARY }},${{ env.IMAGE_SIGNATURE_STATUS }},${{ env.APPROVED_OR_DENIED }},${{ env.DATE_AND_TIME_OF_APPROVAL }},${{ needs.push-to-jfrog.outputs.USER_WHO_APPROVED_OR_DENIED }}" >> approved_and_denied_images.csv
          
-
-
       - name: Commit and Push Changes
         run: |
           git config --local user.email "action@github.com"
