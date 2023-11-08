@@ -41,6 +41,8 @@ jobs:
         # Close issue if image is already approved and post message to issue
       - name: Close issue if image is already approved
         if: steps.try-pulling-image-from-jfrog.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "The image has already been approved and is available in the JFrog registry." > approval_message.txt
           echo "Closing the issue." >> approval_message.txt
