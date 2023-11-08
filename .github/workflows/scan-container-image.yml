@@ -44,7 +44,8 @@ jobs:
         run: |
           echo "The image has already been approved and is available in the JFrog registry." > approval_message.txt
           echo "Closing the issue." >> approval_message.txt
-          gh issue close ${{ github.event.issue.number }} -F approval_message.txt
+          gh issue comment ${{ github.event.issue.number }} -F approval_message.txt
+          gh issue close ${{ github.event.issue.number }} --reason "not planned"
           exit 1
 
       - name: Pull Docker Image from Public Registry
