@@ -2,7 +2,7 @@ name: Pull, Scan and Push Docker Image to JFrog - stable
 
 on:
   issues:
-    types: [opened]
+    types: [closed]
 env:
   IMAGE_NAME: ${{ github.event.issue.title }}
   APPROVED_OR_DENIED: Approved
@@ -21,6 +21,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+        # Get the info about the issue that triggered the workflow
+        # The info needed is the issue title, the state of the issue, and the reason for closing the issue
+        #Create this step
+      - name: Get issue info
+        run: |
+          echo "Issue title: ${{ github.event.issue.title }}"
+          echo "Issue state: ${{ github.event.issue.state }}"
+          echo "Issue closed with: ${{ github.event.issue.closed_at }}"
+          echo "Issue closed with: ${{ github.event.issue.state_reason }}"
+          #Print all the info about the issue object
+          cat "$GITHUB_EVENT_PATH"
 
       - name: Pull Docker Image from Public Registry
         id: pull-dct
