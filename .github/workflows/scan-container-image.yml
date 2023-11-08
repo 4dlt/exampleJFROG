@@ -1,0 +1,114 @@
+name: Pull, Scan and Push Docker Image to JFrog
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+env:
+  IMAGE_NAME: ${{ github.event.issue.title }}
+jobs:
+  scan-on-issue:
+    runs-on: ubuntu-latest
+    environment: request
+    permissions:
+      issues: write
+      contents: write
+      repository-projects: write
+    outputs:
+      IMAGE_DIGEST: ${{ steps.get-image-digest.outputs.IMAGE_DIGEST }}
+      VULNERABILITY_SUMARY: ${{ steps.summarize-vulnerabilities.outputs.VULNERABILITY_SUMMARY }}
+      IMAGE_SIGNATURE_STATUS: ${{ steps.summarize-vulnerabilities.outputs.IMAGE_SIGNATURE_STATUS }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+        # Try to pull the image first from the JFROG registry
+        # If the image is found it should close the issue as not completed and add a comment to the issue stating that the image has already been approved
+        # If the image is not found in the JFROG registry it should continue with the workflow
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v3
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+      - name: Try pulling image from JFrog
+        id: try-pulling-image-from-jfrog
+        run: |
+          # JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
+          # jfrog rt docker pull $JFROG_IMAGE_NAME
+          echo "test"
+        continue-on-error: true
+        
+        # Close issue if image is already approved and post message to issue
+      - name: Close issue if image is already approved
+        if: steps.try-pulling-image-from-jfrog.outcome == 'success'
+        run: |
+          echo "The image has already been approved and is available in the JFrog registry." > approval_message.txt
+          echo "Closing the issue." >> approval_message.txt
+          gh issue close ${{ github.event.issue.number }} -F approval_message.txt
+          exit 1
+
+      - name: Pull Docker Image from Public Registry
+        id: pull-dct
+        run: |
+          #Enable docker content trust
+          export DOCKER_CONTENT_TRUST=1
+          # Pull the image from the public registry (Docker Hub)
+          docker pull $IMAGE_NAME
+        continue-on-error: true
+
+      - name: Pull without signature verification
+        if: steps.pull-dct.outcome == 'failure'
+        run: |
+          #Disable docker content trust
+          export DOCKER_CONTENT_TRUST=0
+          # Pull the image from the public registry (Docker Hub)
+          docker pull $IMAGE_NAME
+          echo $JFROG_IMAGE_NAME
+      
+      - name: Get image digest
+        id: get-image-digest
+        run: |
+          IMAGE_DIGEST=$(docker inspect --format='{{.RepoDigests}}' $IMAGE_NAME | awk -F'@' '{print $2}' | tr -d '[]')
+          echo "::set-output name=IMAGE_DIGEST::$IMAGE_DIGEST"
+
+      - name: Scan Image with Trivy
+        id: trivy-scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}
+          format: 'json'
+          output: 'trivy-results.json' 
+
+     
+      - name: Summarize Vulnerabilities
+        id: summarize-vulnerabilities
+        if: steps.trivy-scan.outcome == 'success'
+        run: |
+          echo "Image name: $IMAGE_NAME > vulnerability_summary.txt
+          python summarize_vulnerabilities.py trivy-results.json >> vulnerability_summary.txt
+          if [ "${{ steps.pull-dct.outcome }}" == "success" ]; then
+            echo "The image is signed." >> vulnerability_summary.txt
+            # set the IMAGE_SIGNATURE_STATUS environment variable to signed
+            echo "IMAGE_SIGNATURE_STATUS=signed" >> $GITHUB_ENV
+          else
+            echo "The image is not signed." >> vulnerability_summary.txt
+            # set the IMAGE_SIGNATURE_STATUS environment variable to not signed
+            echo "IMAGE_SIGNATURE_STATUS=not signed" >> $GITHUB_ENV
+          fi
+          echo "VULNERABILITY_SUMMARY<<EOF" >> $GITHUB_ENV
+          cat vulnerability_summary.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Post Vulnerability Summary to Issue
+        if: steps.trivy-scan.outcome == 'success'
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${env.VULNERABILITY_SUMMARY}`
+            })
