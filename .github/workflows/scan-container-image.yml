@@ -107,5 +107,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} -b $VULNERABILITY_SUMMARY
+          gh issue comment ${{ github.event.issue.number }} -b "$VULNERABILITY_SUMMARY"
        
