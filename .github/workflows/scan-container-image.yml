@@ -1,5 +1,4 @@
-name: Pull, Scan and Push Docker Image to JFrog
-
+name: Pull, Scan  Docker Image
 on:
   issues:
     types: [opened]

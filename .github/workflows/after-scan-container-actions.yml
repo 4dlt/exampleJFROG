@@ -2,7 +2,7 @@ name: Pull, Scan and Push Docker Image to JFrog
 
 on:
   issues:
-    types: [opened]
+    types: [closed]
   workflow_dispatch:
 env:
 #   IMAGE_NAME: ${{ github.event.issue.title }}
