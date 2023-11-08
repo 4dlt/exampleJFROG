@@ -35,7 +35,7 @@ jobs:
         run: |
           # JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
           # jfrog rt docker pull $JFROG_IMAGE_NAME
-          exit 1
+          exit 0
         continue-on-error: true
         
         # Close issue if image is already approved and post message to issue
