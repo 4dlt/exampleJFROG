@@ -35,7 +35,7 @@ jobs:
         run: |
           # JFROG_IMAGE_NAME=$( echo ${{ secrets.JF_URL }} | awk -F 'https://' '{print $2}')/docker/$IMAGE_NAME
           # jfrog rt docker pull $JFROG_IMAGE_NAME
-          echo "test"
+          exit 1
         continue-on-error: true
         
         # Close issue if image is already approved and post message to issue
@@ -102,15 +102,10 @@ jobs:
           cat vulnerability_summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Post Vulnerability Summary to Issue
+      - name: Comment vulnerability summary
         if: steps.trivy-scan.outcome == 'success'
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `${env.VULNERABILITY_SUMMARY}`
-            })
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} -b $VULNERABILITY_SUMMARY
+       
